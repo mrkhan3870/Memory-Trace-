@@ -4,8 +4,10 @@ Document import pipeline routes: file upload + URL import.
 
 import hashlib
 import numpy as np
+import requests
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -14,6 +16,7 @@ from app.database.models import Document, Chunk
 from app.parsers import get_parser, detect_source_type
 from app.parsers.url_fetcher import import_url
 from app.processors.chunker import chunk_document
+from app.vendor.chatpeek import ShareAccessError
 
 router = APIRouter()
 
@@ -123,13 +126,22 @@ async def import_from_url(req: ImportUrlRequest, request: Request, db: Session =
         raise HTTPException(status_code=422, detail="URL cannot be empty")
 
     try:
-        parsed = await import_url(req.url)
+        parsed = await run_in_threadpool(import_url, req.url)
+    except ShareAccessError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
+    except requests.Timeout:
+        raise HTTPException(status_code=504, detail="Timed out fetching the share link")
+    except requests.HTTPError as e:
+        status = e.response.status_code if e.response is not None else None
+        if status == 404:
+            raise HTTPException(status_code=404, detail="Share link not found (deleted or unshared?)")
+        raise HTTPException(status_code=502, detail=f"Share host returned HTTP {status}")
+    except requests.RequestException as e:
         raise HTTPException(status_code=502, detail=f"Failed to fetch URL: {e}")
 
-    file_hash = parsed.metadata.get("file_hash", hashlib.sha256(req.url.encode()).hexdigest())
+    file_hash = parsed.metadata["file_hash"]
     filename = parsed.metadata.get("url", req.url)
 
     return _index_document(parsed, filename, parsed.source_type, file_hash, request, db)
