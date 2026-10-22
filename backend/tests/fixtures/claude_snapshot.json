@@ -1,0 +1,59 @@
+{
+  "uuid": "0f8e6a52-1c2b-4d3e-9f40-5a6b7c8d9e0f",
+  "snapshot_name": "Debugging a FastAPI lifespan",
+  "created_at": "2026-09-01T10:00:00Z",
+  "updated_at": "2026-09-01T10:05:00.123456Z",
+  "chat_messages": [
+    {
+      "index": 1,
+      "sender": "assistant",
+      "text": "",
+      "created_at": "2026-09-01T10:00:05Z",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "PRIVATE REASONING"
+        },
+        {
+          "type": "text",
+          "text": "TestClient only runs lifespan inside a `with` block."
+        },
+        {
+          "type": "tool_use",
+          "name": "artifacts",
+          "input": {
+            "command": "create",
+            "title": "conftest.py",
+            "type": "application/vnd.ant.code",
+            "language": "python",
+            "content": "with TestClient(app) as client:\n    yield client"
+          }
+        }
+      ]
+    },
+    {
+      "index": 0,
+      "sender": "human",
+      "text": null,
+      "created_at": "2026-09-01T10:00:00Z",
+      "content": [
+        {
+          "type": "text",
+          "text": "Why is app.state.encoder missing in my tests?"
+        }
+      ],
+      "attachments": [
+        {
+          "file_name": "error.log",
+          "extracted_content": "AttributeError: encoder"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "sender": "human",
+      "text": "Thanks, that fixed it.",
+      "created_at": "2026-09-01T10:01:00Z"
+    }
+  ]
+}
